@@ -27,35 +27,51 @@ class AnomalyDetector:
         self.isolation_forest = IsolationForest(contamination=0.1, random_state=42)
         self.baseline_stats = {}
     
-    def fit_baseline(self, data: Dict[str, pd.DataFrame]):
-        """Fit baseline statistics from historical data.
+    def fit_baseline(self, data: pd.DataFrame, source_name: str):
+        """Fit baseline statistics from historical data for a specific source.
         
         Args:
-            data: Dictionary of DataFrames by source type
+            data: DataFrame with surveillance data
+            source_name: Name of the data source
         """
-        for source_type, df in data.items():
-            if df.empty or 'timestamp' not in df.columns:
-                continue
-            
-            # Calculate daily counts
-            daily_counts = df.groupby(df['timestamp'].dt.date).size().values
-            
-            self.baseline_stats[source_type] = {
-                'mean': np.mean(daily_counts),
-                'std': np.std(daily_counts),
-                'median': np.median(daily_counts),
-                'q1': np.percentile(daily_counts, 25),
-                'q3': np.percentile(daily_counts, 75),
-                'iqr': np.percentile(daily_counts, 75) - np.percentile(daily_counts, 25)
-            }
+        if data.empty:
+            return
+        
+        # Try different timestamp column names
+        timestamp_col = None
+        for col in ['timestamp', 'created_date', 'date']:
+            if col in data.columns:
+                timestamp_col = col
+                break
+        
+        if not timestamp_col:
+            print(f"Warning: No timestamp column found for {source_name}")
+            return
+        
+        # Calculate daily counts
+        daily_counts = data.groupby(data[timestamp_col].dt.date).size().values
+        
+        if len(daily_counts) == 0:
+            return
+        
+        self.baseline_stats[source_name] = {
+            'mean': np.mean(daily_counts),
+            'std': np.std(daily_counts),
+            'median': np.median(daily_counts),
+            'q1': np.percentile(daily_counts, 25),
+            'q3': np.percentile(daily_counts, 75),
+            'iqr': np.percentile(daily_counts, 75) - np.percentile(daily_counts, 25)
+        }
     
     def detect_statistical_anomalies(self, 
-                                     data: Dict[str, pd.DataFrame],
+                                     data: pd.DataFrame,
+                                     source_name: str,
                                      method: str = 'zscore') -> List[Dict]:
         """Detect anomalies using statistical methods.
         
         Args:
-            data: Dictionary of DataFrames by source type
+            data: DataFrame with surveillance data
+            source_name: Name of the data source
             method: 'zscore', 'iqr', or 'modified_zscore'
             
         Returns:
@@ -63,102 +79,123 @@ class AnomalyDetector:
         """
         anomalies = []
         
-        for source_type, df in data.items():
-            if df.empty or 'timestamp' not in df.columns:
-                continue
+        if data.empty:
+            return anomalies
+        
+        # Try different timestamp column names
+        timestamp_col = None
+        for col in ['timestamp', 'created_date', 'date']:
+            if col in data.columns:
+                timestamp_col = col
+                break
+        
+        if not timestamp_col:
+            print(f"Warning: No timestamp column found for {source_name}")
+            return anomalies
+        
+        # Get baseline stats
+        baseline = self.baseline_stats.get(source_name)
+        if not baseline:
+            print(f"Warning: No baseline stats for {source_name}")
+            return anomalies
+        
+        # Calculate daily counts for recent data
+        daily_counts = data.groupby(data[timestamp_col].dt.date).size()
+        
+        for date, count in daily_counts.items():
+            anomaly_score = 0.0
+            is_anomaly = False
+            detection_method = method
             
-            # Get baseline stats
-            baseline = self.baseline_stats.get(source_type)
-            if not baseline:
-                continue
+            if method == 'zscore':
+                # Z-score method
+                if baseline['std'] > 0:
+                    z_score = (count - baseline['mean']) / baseline['std']
+                    is_anomaly = abs(z_score) > 2.5
+                    anomaly_score = min(abs(z_score) / 3.0, 1.0)
             
-            # Calculate daily counts for recent data
-            daily_counts = df.groupby(df['timestamp'].dt.date).size()
+            elif method == 'iqr':
+                # IQR method
+                lower_bound = baseline['q1'] - 1.5 * baseline['iqr']
+                upper_bound = baseline['q3'] + 1.5 * baseline['iqr']
+                is_anomaly = count < lower_bound or count > upper_bound
+                
+                if count > baseline['median']:
+                    anomaly_score = min((count - upper_bound) / baseline['iqr'], 1.0) if baseline['iqr'] > 0 else 0
+                else:
+                    anomaly_score = min((lower_bound - count) / baseline['iqr'], 1.0) if baseline['iqr'] > 0 else 0
             
-            for date, count in daily_counts.items():
-                anomaly_score = 0.0
-                is_anomaly = False
-                detection_method = method
-                
-                if method == 'zscore':
-                    # Z-score method
-                    if baseline['std'] > 0:
-                        z_score = (count - baseline['mean']) / baseline['std']
-                        is_anomaly = abs(z_score) > 2.5
-                        anomaly_score = min(abs(z_score) / 3.0, 1.0)
-                
-                elif method == 'iqr':
-                    # IQR method
-                    lower_bound = baseline['q1'] - 1.5 * baseline['iqr']
-                    upper_bound = baseline['q3'] + 1.5 * baseline['iqr']
-                    is_anomaly = count < lower_bound or count > upper_bound
-                    
-                    if count > baseline['median']:
-                        anomaly_score = min((count - upper_bound) / baseline['iqr'], 1.0)
-                    else:
-                        anomaly_score = min((lower_bound - count) / baseline['iqr'], 1.0)
-                
-                elif method == 'modified_zscore':
-                    # Modified Z-score using median absolute deviation
-                    median = baseline['median']
-                    mad = np.median(np.abs(daily_counts.values - median))
-                    if mad > 0:
-                        modified_z = 0.6745 * (count - median) / mad
-                        is_anomaly = abs(modified_z) > 3.5
-                        anomaly_score = min(abs(modified_z) / 4.0, 1.0)
-                
-                if is_anomaly and anomaly_score >= self.threshold:
-                    anomalies.append({
-                        'id': f"{source_type}_{date}_{np.random.randint(1000, 9999)}",
-                        'timestamp': datetime.combine(date, datetime.min.time()),
-                        'type': f'{source_type}_spike',
-                        'data_source': source_type,
-                        'severity': self._calculate_severity(anomaly_score),
-                        'confidence': float(anomaly_score),
-                        'baseline_value': baseline['mean'],
-                        'current_value': int(count),
-                        'deviation_percent': ((count - baseline['mean']) / baseline['mean'] * 100) if baseline['mean'] > 0 else 0,
-                        'detection_method': detection_method,
-                        'location': 'aggregated'  # Can be refined with location data
-                    })
+            elif method == 'modified_zscore':
+                # Modified Z-score using median absolute deviation
+                median = baseline['median']
+                mad = np.median(np.abs(daily_counts.values - median))
+                if mad > 0:
+                    modified_z = 0.6745 * (count - median) / mad
+                    is_anomaly = abs(modified_z) > 3.5
+                    anomaly_score = min(abs(modified_z) / 4.0, 1.0)
+            
+            if is_anomaly and anomaly_score >= self.threshold:
+                anomalies.append({
+                    'id': f"{source_name}_{date}_{np.random.randint(1000, 9999)}",
+                    'timestamp': datetime.combine(date, datetime.min.time()),
+                    'type': f'{source_name}_spike',
+                    'data_source': source_name,
+                    'severity': self._calculate_severity(anomaly_score),
+                    'confidence': float(anomaly_score),
+                    'baseline_value': baseline['mean'],
+                    'current_value': int(count),
+                    'deviation_percent': ((count - baseline['mean']) / baseline['mean'] * 100) if baseline['mean'] > 0 else 0,
+                    'detection_method': detection_method,
+                    'location': 'aggregated'  # Can be refined with location data
+                })
         
         return anomalies
     
-    def detect_ml_anomalies(self, data: Dict[str, pd.DataFrame]) -> List[Dict]:
+    def detect_ml_anomalies(self, data: pd.DataFrame, source_name: str) -> List[Dict]:
         """Detect anomalies using machine learning (Isolation Forest).
         
         Args:
-            data: Dictionary of DataFrames by source type
+            data: DataFrame with surveillance data
+            source_name: Name of the data source
             
         Returns:
             List of detected anomalies
         """
         anomalies = []
         
+        if data.empty:
+            return anomalies
+        
+        # Try different timestamp column names
+        timestamp_col = None
+        for col in ['timestamp', 'created_date', 'date']:
+            if col in data.columns:
+                timestamp_col = col
+                break
+        
+        if not timestamp_col:
+            return anomalies
+        
         # Prepare feature matrix
         features_list = []
         metadata_list = []
         
-        for source_type, df in data.items():
-            if df.empty or 'timestamp' not in df.columns:
-                continue
+        daily_data = data.groupby(data[timestamp_col].dt.date)
+        
+        for date, group in daily_data:
+            # Extract features
+            features = [
+                len(group),  # Daily count
+                group[timestamp_col].dt.hour.mean() if timestamp_col in group.columns else 12,  # Average hour
+                len(group) / max(1, group[timestamp_col].dt.hour.nunique()) if timestamp_col in group.columns else 0,  # Hourly rate
+            ]
             
-            daily_data = df.groupby(df['timestamp'].dt.date)
-            
-            for date, group in daily_data:
-                # Extract features
-                features = [
-                    len(group),  # Daily count
-                    group['timestamp'].dt.hour.mean() if 'timestamp' in group.columns else 12,  # Average hour
-                    len(group) / max(1, group['timestamp'].dt.hour.nunique()) if 'timestamp' in group.columns else 0,  # Hourly rate
-                ]
-                
-                features_list.append(features)
-                metadata_list.append({
-                    'date': date,
-                    'source_type': source_type,
-                    'count': len(group)
-                })
+            features_list.append(features)
+            metadata_list.append({
+                'date': date,
+                'source_type': source_name,
+                'count': len(group)
+            })
         
         if len(features_list) < 10:  # Need minimum samples
             return anomalies
@@ -190,84 +227,95 @@ class AnomalyDetector:
         
         return anomalies
     
-    def detect_temporal_anomalies(self, data: Dict[str, pd.DataFrame]) -> List[Dict]:
+    def detect_temporal_anomalies(self, data: pd.DataFrame, source_name: str) -> List[Dict]:
         """Detect temporal anomalies (unusual patterns over time).
         
         Args:
-            data: Dictionary of DataFrames by source type
+            data: DataFrame with surveillance data
+            source_name: Name of the data source
             
         Returns:
             List of detected anomalies
         """
         anomalies = []
         
-        for source_type, df in data.items():
-            if df.empty or 'timestamp' not in df.columns:
+        if data.empty:
+            return anomalies
+        
+        # Try different timestamp column names
+        timestamp_col = None
+        for col in ['timestamp', 'created_date', 'date']:
+            if col in data.columns:
+                timestamp_col = col
+                break
+        
+        if not timestamp_col:
+            return anomalies
+        
+        # Sort by timestamp
+        df_sorted = data.sort_values(timestamp_col)
+        daily_counts = df_sorted.groupby(df_sorted[timestamp_col].dt.date).size()
+        
+        if len(daily_counts) < 7:  # Need at least a week of data
+            return anomalies
+        
+        # Calculate rate of change
+        daily_changes = daily_counts.pct_change().fillna(0)
+        
+        # Detect rapid increases (potential outbreak signal)
+        for i in range(len(daily_changes)):
+            if i < 3:  # Skip first few days
                 continue
             
-            # Sort by timestamp
-            df_sorted = df.sort_values('timestamp')
-            daily_counts = df_sorted.groupby(df_sorted['timestamp'].dt.date).size()
-            
-            if len(daily_counts) < 7:  # Need at least a week of data
-                continue
-            
-            # Calculate rate of change
-            daily_changes = daily_counts.pct_change().fillna(0)
-            
-            # Detect rapid increases (potential outbreak signal)
-            for i in range(len(daily_changes)):
-                if i < 3:  # Skip first few days
-                    continue
+            # Check for sustained increase
+            recent_changes = daily_changes.iloc[i-3:i+1]
+            if (recent_changes > 0.2).sum() >= 3:  # 20% increase for 3+ consecutive days
+                avg_increase = recent_changes.mean()
+                anomaly_score = min(avg_increase, 1.0)
                 
-                # Check for sustained increase
-                recent_changes = daily_changes.iloc[i-3:i+1]
-                if (recent_changes > 0.2).sum() >= 3:  # 20% increase for 3+ consecutive days
-                    avg_increase = recent_changes.mean()
-                    anomaly_score = min(avg_increase, 1.0)
-                    
-                    if anomaly_score >= self.threshold:
-                        date = daily_counts.index[i]
-                        anomalies.append({
-                            'id': f"{source_type}_temporal_{date}_{np.random.randint(1000, 9999)}",
-                            'timestamp': datetime.combine(date, datetime.min.time()),
-                            'type': f'{source_type}_rapid_increase',
-                            'data_source': source_type,
-                            'severity': 'high',  # Rapid increases are always concerning
-                            'confidence': float(anomaly_score),
-                            'current_value': int(daily_counts.iloc[i]),
-                            'detection_method': 'temporal_pattern',
-                            'pattern': 'sustained_increase',
-                            'location': 'aggregated'
-                        })
+                if anomaly_score >= self.threshold:
+                    date = daily_counts.index[i]
+                    anomalies.append({
+                        'id': f"{source_name}_temporal_{date}_{np.random.randint(1000, 9999)}",
+                        'timestamp': datetime.combine(date, datetime.min.time()),
+                        'type': f'{source_name}_rapid_increase',
+                        'data_source': source_name,
+                        'severity': 'high',  # Rapid increases are always concerning
+                        'confidence': float(anomaly_score),
+                        'current_value': int(daily_counts.iloc[i]),
+                        'detection_method': 'temporal_pattern',
+                        'pattern': 'sustained_increase',
+                        'location': 'aggregated'
+                    })
         
         return anomalies
     
-    def detect_all_anomalies(self, data: Dict[str, pd.DataFrame]) -> List[Dict]:
+    def detect_all_anomalies(self, data: pd.DataFrame, source_name: str) -> List[Dict]:
         """Detect anomalies using all available methods.
         
         Args:
-            data: Dictionary of DataFrames by source type
+            data: DataFrame with surveillance data
+            source_name: Name of the data source
             
         Returns:
             Combined list of detected anomalies
         """
-        # Fit baseline if not already done
-        if not self.baseline_stats:
-            self.fit_baseline(data)
+        # Fit baseline if not already done for this source
+        if source_name not in self.baseline_stats:
+            self.fit_baseline(data, source_name)
         
         # Collect anomalies from all methods
         all_anomalies = []
         
         # Statistical methods
-        all_anomalies.extend(self.detect_statistical_anomalies(data, method='zscore'))
-        all_anomalies.extend(self.detect_statistical_anomalies(data, method='iqr'))
+        all_anomalies.extend(self.detect_statistical_anomalies(data, source_name, method='zscore'))
+        all_anomalies.extend(self.detect_statistical_anomalies(data, source_name, method='iqr'))
         
         # ML method
-        all_anomalies.extend(self.detect_ml_anomalies(data))
+        all_anomalies.extend(self.detect_ml_anomalies(data, source_name))
         
         # Temporal patterns
-        all_anomalies.extend(self.detect_temporal_anomalies(data))
+        all_anomalies.extend(self.detect_temporal_anomalies(data, source_name))
         
         # Deduplicate and sort by confidence
         unique_anomalies = self._deduplicate_anomalies(all_anomalies)
