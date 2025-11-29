@@ -21,16 +21,25 @@ class DatabaseConnection:
         self.connection = None
     
     def connect(self):
-        """Establish database connection."""
-        try:
-            self.connection = psycopg2.connect(
-                self.connection_string,
-                cursor_factory=RealDictCursor
-            )
-            return self.connection
-        except Exception as e:
-            print(f"Error connecting to database: {e}")
-            raise
+        """Establish database connection with retry logic."""
+        max_retries = 3
+        retry_delay = 0.5
+        
+        for attempt in range(max_retries):
+            try:
+                self.connection = psycopg2.connect(
+                    self.connection_string,
+                    cursor_factory=RealDictCursor,
+                    connect_timeout=10  # 10 second timeout
+                )
+                return self.connection
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    import time
+                    time.sleep(retry_delay)
+                    continue
+                print(f"Error connecting to database after {max_retries} attempts: {e}")
+                raise
     
     def disconnect(self):
         """Close database connection."""
