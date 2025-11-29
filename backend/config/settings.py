@@ -2,8 +2,6 @@
 
 import os
 from dotenv import load_dotenv
-from azure.ai.projects import AIProjectClient
-from azure.identity import DefaultAzureCredential
 
 # Load environment variables from .env file
 load_dotenv()
@@ -11,20 +9,28 @@ load_dotenv()
 class Settings:
     """Application configuration settings."""
     
-    # Azure AI Configuration
-    AZURE_AI_PROJECT_CONNECTION_STRING = os.getenv("AZURE_AI_AGENT_PROJECT_CONNECTION_STRING", "")
-    AZURE_AI_MODEL_DEPLOYMENT_NAME = os.getenv("AZURE_AI_AGENT_MODEL_DEPLOYMENT_NAME", "gpt-4")
+    # OpenAI Configuration (Migrated from Azure OpenAI)
+    OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+    OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4-turbo-preview")
+    OPENAI_ORGANIZATION = os.getenv("OPENAI_ORGANIZATION", "")
     
-    # Database Configuration
+    # Database Configuration (Migrated from Azure SQL to Supabase PostgreSQL)
     DB_CONNECTION_STRING = os.getenv("DB_CONNECTION_STRING", "")
     
-    # Azure Storage Configuration
-    AZURE_STORAGE_CONNECTION_STRING = os.getenv("AZURE_STORAGE_CONNECTION_STRING", "")
-    STORAGE_CONTAINER_NAME = "surveillance-reports"
+    # Supabase Configuration
+    SUPABASE_URL = os.getenv("SUPABASE_URL", "")
+    SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY", "")
+    SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "")
+    SUPABASE_STORAGE_BUCKET = os.getenv("SUPABASE_STORAGE_BUCKET", "surveillance-reports")
     
-    # Bing Search Configuration
-    BING_SEARCH_API_KEY = os.getenv("BING_SEARCH_API_KEY", "")
-    BING_CONNECTION_NAME = os.getenv("BING_CONNECTION_NAME", "")
+    # Storage Configuration (Migrated from Azure Blob to Local/Supabase)
+    REPORT_STORAGE_TYPE = os.getenv("REPORT_STORAGE_TYPE", "local")  # Options: local, supabase
+    REPORT_STORAGE_PATH = os.getenv("REPORT_STORAGE_PATH", "./reports")
+    
+    # Search Configuration (Migrated from Bing to DuckDuckGo)
+    USE_DUCKDUCKGO = os.getenv("USE_DUCKDUCKGO", "true").lower() == "true"
+    GOOGLE_SEARCH_API_KEY = os.getenv("GOOGLE_SEARCH_API_KEY", "")
+    GOOGLE_SEARCH_CX = os.getenv("GOOGLE_SEARCH_CX", "")
     
     # API Configuration
     API_HOST = os.getenv("API_HOST", "0.0.0.0")
@@ -51,8 +57,8 @@ class Settings:
     def validate(cls):
         """Validate that required settings are configured."""
         required_settings = [
-            ("AZURE_AI_PROJECT_CONNECTION_STRING", cls.AZURE_AI_PROJECT_CONNECTION_STRING),
-            ("AZURE_AI_MODEL_DEPLOYMENT_NAME", cls.AZURE_AI_MODEL_DEPLOYMENT_NAME),
+            ("OPENAI_API_KEY", cls.OPENAI_API_KEY),
+            ("DB_CONNECTION_STRING", cls.DB_CONNECTION_STRING),
         ]
         
         missing = [name for name, value in required_settings if not value]
@@ -60,57 +66,65 @@ class Settings:
             raise ValueError(f"Missing required settings: {', '.join(missing)}")
         
         return True
+    
+    @classmethod
+    def is_supabase_configured(cls) -> bool:
+        """Check if Supabase is configured."""
+        return bool(cls.SUPABASE_URL and cls.SUPABASE_ANON_KEY)
 
 # Create a singleton instance
 settings = Settings()
 
 
-class AIAgentSettings:
-    """Settings for AI Agent initialization."""
+class LLMSettings:
+    """Settings for LLM initialization (migrated from Azure OpenAI to OpenAI)."""
     
-    def __init__(self, connection_string: str = None, model_deployment_name: str = None):
-        """Initialize AI Agent settings.
+    def __init__(self, api_key: str = None, model: str = None, organization: str = None):
+        """Initialize LLM settings.
         
         Args:
-            connection_string: Azure AI Project connection string
-            model_deployment_name: Model deployment name
+            api_key: OpenAI API key
+            model: Model name (e.g., gpt-4-turbo-preview)
+            organization: Optional organization ID
         """
-        self.connection_string = connection_string or settings.AZURE_AI_PROJECT_CONNECTION_STRING
-        self.model_deployment_name = model_deployment_name or settings.AZURE_AI_MODEL_DEPLOYMENT_NAME
+        self.api_key = api_key or settings.OPENAI_API_KEY
+        self.model = model or settings.OPENAI_MODEL
+        self.organization = organization or settings.OPENAI_ORGANIZATION
     
     def validate(self):
         """Validate settings."""
-        if not self.connection_string:
-            raise ValueError("Azure AI Project connection string is required")
-        if not self.model_deployment_name:
-            raise ValueError("Model deployment name is required")
+        if not self.api_key:
+            raise ValueError("OpenAI API key is required. Set OPENAI_API_KEY environment variable.")
+        if not self.model:
+            raise ValueError("OpenAI model is required. Set OPENAI_MODEL environment variable.")
         return True
 
 
-def initialize_ai_agent_settings(connection_string: str = None, 
-                                 model_deployment_name: str = None) -> AIAgentSettings:
-    """Initialize AI Agent settings.
+def initialize_llm_settings(api_key: str = None, model: str = None, organization: str = None) -> LLMSettings:
+    """Initialize LLM settings.
     
     Args:
-        connection_string: Optional connection string override
-        model_deployment_name: Optional model deployment name override
+        api_key: Optional API key override
+        model: Optional model override
+        organization: Optional organization override
         
     Returns:
-        AIAgentSettings instance
+        LLMSettings instance
     """
-    ai_settings = AIAgentSettings(
-        connection_string=connection_string,
-        model_deployment_name=model_deployment_name
+    llm_settings = LLMSettings(
+        api_key=api_key,
+        model=model,
+        organization=organization
     )
-    ai_settings.validate()
-    return ai_settings
+    llm_settings.validate()
+    return llm_settings
 
 
 def get_database_connection_string() -> str:
     """Get database connection string from settings.
     
     Returns:
-        Database connection string
+        Database connection string (PostgreSQL format)
         
     Raises:
         ValueError: If connection string is not configured
@@ -121,22 +135,20 @@ def get_database_connection_string() -> str:
     return connection_string
 
 
-def get_project_client() -> AIProjectClient:
-    """Create and return an Azure AI Project client.
+def get_supabase_client():
+    """Create and return a Supabase client.
     
     Returns:
-        AIProjectClient instance
+        Supabase Client instance
     """
-    connection_string = settings.AZURE_AI_PROJECT_CONNECTION_STRING
-    if not connection_string:
-        raise ValueError("Azure AI Project connection string is not configured")
+    if not settings.is_supabase_configured():
+        raise ValueError("Supabase is not configured. Set SUPABASE_URL and SUPABASE_ANON_KEY environment variables.")
     
-    credential = DefaultAzureCredential(
-        exclude_environment_credential=True,
-        exclude_managed_identity_credential=True
+    from supabase import create_client, Client
+    
+    supabase: Client = create_client(
+        settings.SUPABASE_URL,
+        settings.SUPABASE_ANON_KEY
     )
     
-    return AIProjectClient.from_connection_string(
-        conn_str=connection_string,
-        credential=credential
-    )
+    return supabase
