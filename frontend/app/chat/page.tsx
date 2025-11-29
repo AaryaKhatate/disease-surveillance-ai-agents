@@ -114,16 +114,16 @@ export default function ChatPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <Activity className="w-6 h-6 text-primary" />
-          <h1 className="text-2xl font-bold">Disease Surveillance Chat</h1>
+          <Activity className="w-6 h-6 text-green-400" />
+          <h1 className="text-2xl font-bold text-white">Disease Surveillance Chat</h1>
         </div>
         {sessionId && (
-          <Badge variant="outline" className="gap-2">
+          <Badge className="gap-2 bg-gradient-to-r from-white/10 to-white/5 text-white border-white/20">
             Session: {sessionId.substring(0, 8)}...
             <Button
               variant="ghost"
               size="icon"
-              className="h-4 w-4 hover:bg-primary/20"
+              className="h-4 w-4 hover:bg-green-500/20"
               onClick={() => copyMessage(sessionId)}
             >
               <Copy className="h-3 w-3" />
@@ -133,7 +133,7 @@ export default function ChatPage() {
       </div>
 
       {/* Chat Messages */}
-      <Card className="flex-1 flex flex-col">
+      <Card className="flex-1 flex flex-col bg-gradient-to-br from-white/5 to-white/[0.02] backdrop-blur-xl border-white/10">
         <ScrollArea className="flex-1 p-4">
           <div className="space-y-4">
             {messages.map((message, index) => (
@@ -145,11 +145,11 @@ export default function ChatPage() {
                 <div
                   className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
                     message.role === 'user'
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-secondary text-secondary-foreground'
+                      ? 'bg-gradient-to-br from-green-400 to-green-600'
+                      : 'bg-gradient-to-br from-white/10 to-white/5 border border-white/20'
                   }`}
                 >
-                  {message.role === 'user' ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
+                  {message.role === 'user' ? <User className="w-4 h-4 text-white" /> : <Bot className="w-4 h-4 text-green-400" />}
                 </div>
 
                 {/* Message Content */}
@@ -157,26 +157,26 @@ export default function ChatPage() {
                   <div
                     className={`rounded-lg p-4 ${
                       message.role === 'user'
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-muted'
+                        ? 'bg-gradient-to-r from-green-500/20 to-green-600/10 text-white border border-green-500/20'
+                        : 'bg-gradient-to-br from-white/10 to-white/5 text-white border border-white/10'
                     }`}
                   >
                     {message.role === 'user' ? (
                       <p className="whitespace-pre-wrap">{message.content}</p>
                     ) : (
-                      <div className="prose prose-sm dark:prose-invert max-w-none">
+                      <div className="prose prose-sm prose-invert max-w-none">
                         <Markdown remarkPlugins={[remarkGfm]}>{message.content}</Markdown>
                       </div>
                     )}
                   </div>
 
                   {/* Metadata */}
-                  <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                  <div className="flex items-center gap-2 mt-1 text-xs text-gray-400">
                     {message.timestamp && (
                       <span>{new Date(message.timestamp).toLocaleTimeString()}</span>
                     )}
                     {message.agents_involved && message.agents_involved.length > 0 && (
-                      <Badge variant="secondary" className="text-xs">
+                      <Badge className="text-xs bg-gradient-to-r from-green-500/20 to-green-600/10 text-green-400 border-green-500/20">
                         {message.agents_involved.length} agent{message.agents_involved.length > 1 ? 's' : ''} involved
                       </Badge>
                     )}
@@ -201,14 +201,14 @@ export default function ChatPage() {
 
             {isGenerating && (
               <div className="flex gap-3">
-                <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center bg-secondary text-secondary-foreground">
-                  <Bot className="w-4 h-4" />
+                <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center bg-gradient-to-br from-white/10 to-white/5 border border-white/20">
+                  <Bot className="w-4 h-4 text-green-400" />
                 </div>
                 <div className="flex-1 max-w-[80%]">
-                  <div className="rounded-lg p-4 bg-muted">
+                  <div className="rounded-lg p-4 bg-gradient-to-br from-white/10 to-white/5 border border-white/10">
                     <div className="flex items-center gap-2">
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span className="text-sm">AI agents are analyzing...</span>
+                      <Loader2 className="w-4 h-4 animate-spin text-green-400" />
+                      <span className="text-sm text-white">AI agents are analyzing...</span>
                     </div>
                   </div>
                 </div>
@@ -220,16 +220,20 @@ export default function ChatPage() {
         </ScrollArea>
 
         {/* Input Form */}
-        <CardContent className="border-t p-4">
+        <CardContent className="border-t border-white/10 p-4">
           <form onSubmit={handleSubmit} className="flex gap-2">
             <Input
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="Ask about disease surveillance, anomalies, predictions..."
               disabled={isGenerating}
-              className="flex-1"
+              className="flex-1 bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-green-500/50"
             />
-            <Button type="submit" disabled={isGenerating || !input.trim()}>
+            <Button 
+              type="submit" 
+              disabled={isGenerating || !input.trim()}
+              className="bg-gradient-to-r from-green-500/20 to-green-600/10 hover:from-green-500/30 hover:to-green-600/20 text-green-400 border-green-500/20"
+            >
               {isGenerating ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
@@ -240,7 +244,7 @@ export default function ChatPage() {
               )}
             </Button>
           </form>
-          <p className="text-xs text-muted-foreground mt-2 text-center">
+          <p className="text-xs text-gray-400 mt-2 text-center">
             💡 Try: "Analyze current surveillance data" or "Run full outbreak prediction analysis"
           </p>
         </CardContent>
