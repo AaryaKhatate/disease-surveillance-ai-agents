@@ -68,8 +68,8 @@ export default function PredictionsPage() {
             </CardContent>
           </Card>
         ) : (
-          predictions.map((pred) => (
-            <Card key={pred.prediction_id}>
+          predictions.map((pred, index) => (
+            <Card key={`${pred.prediction_id}-${index}`}>
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <CardTitle className="text-lg">{pred.disease_name}</CardTitle>

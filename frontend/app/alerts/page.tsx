@@ -196,8 +196,8 @@ export default function AlertsPage() {
               </div>
             ) : (
               <div className="space-y-4">
-                {alerts.map((alert) => (
-                  <Card key={alert.alert_id} className="border-l-4" style={{
+                {alerts.map((alert, index) => (
+                  <Card key={`${alert.alert_id}-${index}`} className="border-l-4" style={{
                     borderLeftColor: alert.severity === 'critical' ? '#ef4444' :
                                     alert.severity === 'high' ? '#f97316' :
                                     alert.severity === 'medium' ? '#eab308' : '#22c55e'

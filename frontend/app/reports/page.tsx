@@ -58,8 +58,8 @@ export default function ReportsPage() {
             </CardContent>
           </Card>
         ) : (
-          reports.map((report) => (
-            <Card key={report.report_id}>
+          reports.map((report, index) => (
+            <Card key={`${report.report_id}-${index}`}>
               <CardHeader>
                 <CardTitle className="text-lg flex items-center gap-2">
                   <FileText className="h-5 w-5" />

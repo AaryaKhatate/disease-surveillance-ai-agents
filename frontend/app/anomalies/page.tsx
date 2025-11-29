@@ -61,8 +61,8 @@ export default function AnomaliesPage() {
             </CardContent>
           </Card>
         ) : (
-          anomalies.map((anomaly) => (
-            <Card key={anomaly.anomaly_id}>
+          anomalies.map((anomaly, index) => (
+            <Card key={`${anomaly.anomaly_id}-${index}`}>
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <CardTitle className="text-lg">{anomaly.anomaly_type}</CardTitle>
@@ -82,11 +82,19 @@ export default function AnomaliesPage() {
                 </div>
                 <div>
                   <p className="text-muted-foreground">Deviation</p>
-                  <p className="font-medium text-destructive">+{anomaly.deviation_percent.toFixed(1)}%</p>
+                  <p className="font-medium text-destructive">
+                    +{typeof anomaly.deviation_percent === 'number' 
+                      ? anomaly.deviation_percent.toFixed(1) 
+                      : parseFloat(anomaly.deviation_percent as any)?.toFixed(1) || '0.0'}%
+                  </p>
                 </div>
                 <div>
                   <p className="text-muted-foreground">Confidence</p>
-                  <p className="font-medium">{(anomaly.confidence * 100).toFixed(0)}%</p>
+                  <p className="font-medium">
+                    {typeof anomaly.confidence === 'number' 
+                      ? (anomaly.confidence * 100).toFixed(0) 
+                      : (parseFloat(anomaly.confidence as any) * 100)?.toFixed(0) || '0'}%
+                  </p>
                 </div>
               </CardContent>
             </Card>
