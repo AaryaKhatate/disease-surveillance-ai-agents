@@ -42,55 +42,59 @@ export default function AnomaliesPage() {
   return (
     <div className="container mx-auto p-6 space-y-6">
       <div>
-        <h1 className="text-3xl font-bold flex items-center gap-2">
-          <Search className="h-8 w-8 text-primary" />
+        <h1 className="text-3xl font-bold flex items-center gap-2 text-white">
+          <Search className="h-8 w-8 text-green-400" />
           Anomaly Detection
         </h1>
-        <p className="text-muted-foreground">
+        <p className="text-gray-400">
           Multi-source health data anomalies and pattern analysis
         </p>
       </div>
 
       <div className="space-y-4">
         {loading ? (
-          <p>Loading anomalies...</p>
+          <p className="text-gray-400">Loading anomalies...</p>
         ) : anomalies.length === 0 ? (
-          <Card>
+          <Card className="bg-gradient-to-br from-white/5 to-white/[0.02] backdrop-blur-xl border-white/10">
             <CardContent className="pt-6">
-              <p className="text-muted-foreground text-center">No anomalies detected</p>
+              <p className="text-gray-400 text-center">No anomalies detected</p>
             </CardContent>
           </Card>
         ) : (
           anomalies.map((anomaly, index) => (
-            <Card key={`${anomaly.anomaly_id}-${index}`}>
+            <Card key={`${anomaly.anomaly_id}-${index}`} className="bg-gradient-to-br from-white/5 to-white/[0.02] backdrop-blur-xl border-white/10 hover:border-white/20 transition-all duration-200 card-hover">
               <CardHeader>
                 <div className="flex items-start justify-between">
-                  <CardTitle className="text-lg">{anomaly.anomaly_type}</CardTitle>
-                  <Badge variant={anomaly.severity === 'high' || anomaly.severity === 'critical' ? 'destructive' : 'secondary'}>
+                  <CardTitle className="text-lg text-white">{anomaly.anomaly_type}</CardTitle>
+                  <Badge className={`${
+                    anomaly.severity === 'high' || anomaly.severity === 'critical' 
+                      ? 'bg-gradient-to-r from-red-500/20 to-red-600/10 text-red-400 border-red-500/20' 
+                      : 'bg-gradient-to-r from-orange-500/20 to-orange-600/10 text-orange-400 border-orange-500/20'
+                  }`}>
                     {anomaly.severity}
                   </Badge>
                 </div>
               </CardHeader>
               <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                 <div>
-                  <p className="text-muted-foreground">Region</p>
-                  <p className="font-medium">{anomaly.region}</p>
+                  <p className="text-gray-400">Region</p>
+                  <p className="font-medium text-white">{anomaly.region}</p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground">Data Source</p>
-                  <p className="font-medium">{anomaly.data_source}</p>
+                  <p className="text-gray-400">Data Source</p>
+                  <p className="font-medium text-white">{anomaly.data_source}</p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground">Deviation</p>
-                  <p className="font-medium text-destructive">
+                  <p className="text-gray-400">Deviation</p>
+                  <p className="font-medium text-red-400">
                     +{typeof anomaly.deviation_percent === 'number' 
                       ? anomaly.deviation_percent.toFixed(1) 
                       : parseFloat(anomaly.deviation_percent as any)?.toFixed(1) || '0.0'}%
                   </p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground">Confidence</p>
-                  <p className="font-medium">
+                  <p className="text-gray-400">Confidence</p>
+                  <p className="font-medium text-white">
                     {typeof anomaly.confidence === 'number' 
                       ? (anomaly.confidence * 100).toFixed(0) 
                       : (parseFloat(anomaly.confidence as any) * 100)?.toFixed(0) || '0'}%
