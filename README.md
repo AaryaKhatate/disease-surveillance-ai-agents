@@ -201,12 +201,14 @@ streamlit run streamlit_app.py
 ## Project Structure
 
 ```
-disease-surveillance-ai/
+disease-surveillance-ai-agents/
 ├── backend/
+│   ├── .env.example               # Environment variables template
 │   ├── agents/                    # Agent definitions and strategies
 │   │   ├── agent_definitions.py   # Specialized agent instructions
 │   │   ├── agent_manager.py       # Agent creation and management
-│   │   └── agent_strategies.py    # Selection and termination logic
+│   │   ├── agent_strategies.py    # Selection and termination logic
+│   │   └── langgraph_orchestrator.py # LangGraph agent orchestration
 │   ├── api/                       # API components
 │   │   ├── app.py                 # FastAPI application setup
 │   │   ├── endpoints.py           # API route definitions
@@ -214,71 +216,73 @@ disease-surveillance-ai/
 │   ├── config/                    # Configuration
 │   │   └── settings.py            # Environment settings
 │   ├── managers/                  # System managers
-│   │   ├── surveillance_manager.py # Disease surveillance orchestration
-│   │   └── prediction_manager.py   # Outbreak prediction management
+│   │   └── surveillance_manager.py # Disease surveillance orchestration
 │   ├── models/                    # ML models
-│   │   ├── anomaly_detector.py    # Anomaly detection models
-│   │   └── prediction_model.py    # Disease prediction models
+│   │   └── anomaly_detector.py    # Anomaly detection models
 │   ├── plugins/                   # Semantic Kernel plugins
 │   │   ├── data_collection_plugin.py
 │   │   ├── anomaly_detection_plugin.py
 │   │   ├── prediction_plugin.py
 │   │   ├── alert_plugin.py
+│   │   ├── reporting_plugin.py
 │   │   └── logging_plugin.py
 │   ├── utils/                     # Utility functions
 │   │   ├── database_utils.py
 │   │   ├── data_processing.py
-│   │   └── visualization_utils.py
-│   ├── sql/                       # Database schemas
+│   │   ├── load_data_to_supabase.py
+│   │   ├── load_pandemic_data.py
+│   │   ├── query_helpers.py
+│   │   ├── simple_data_loader.py
+│   │   ├── supabase_data_loader.py
+│   │   └── transform_pandemic_data.py
+│   ├── sql/                       # Database schemas and scripts
+│   │   ├── create_stored_procedures_postgresql.sql
+│   │   ├── create_surveillance_tables_postgresql.sql
+│   │   ├── insert_mock_data.sql
+│   │   ├── insert_pandemic_llm_data.sql
+│   │   └── sample_data.sql
+│   ├── main.py                    # Main application entry point
+│   ├── streamlit_app.py           # Streamlit developer dashboard
 │   └── requirements.txt           # Python dependencies
+├── data/                          # Data and documentation assets
+│   ├── public/                    # Public assets
+│   │   └── architecture.png       # System architecture diagram
+│   ├── src/                       # Data processing notebooks
+│   │   ├── generate_prompt.ipynb
+│   │   ├── generate_target.ipynb
+│   │   ├── genomic_data_preprocess.ipynb
+│   │   ├── genomic_prompt.ipynb
+│   │   ├── raw_data.zip           # Raw dataset archive
+│   │   ├── raw_data_preprocessing.ipynb
+│   │   └── trend_descrption_with_ChatGPT.ipynb
+│   └── readme.md                  # Data documentation
 ├── frontend/
-│   ├── app/                       # Next.js pages
+│   ├── app/                       # Next.js app directory
 │   │   ├── dashboard/             # Main surveillance dashboard
 │   │   ├── chat/                  # Chat interface
 │   │   ├── alerts/                # Alert management
+│   │   ├── anomalies/             # Anomaly detection views
 │   │   ├── predictions/           # Prediction visualizations
-│   │   └── api/                   # API routes
+│   │   ├── reports/               # Report management
+│   │   ├── thinking-logs/         # Agent thinking logs
+│   │   ├── api/                   # API routes
+│   │   ├── layout.tsx             # Root layout
+│   │   ├── page.tsx               # Home page
+│   │   └── globals.css            # Global styles
 │   ├── components/                # React components
-│   └── package.json               # Node dependencies
-└── docs/                          # Documentation
+│   │   ├── ui/                    # UI components
+│   │   ├── site-header.tsx        # Site header component
+│   │   └── theme-provider.tsx    # Theme provider component
+│   ├── lib/                       # Utility libraries
+│   ├── next.config.ts             # Next.js configuration
+│   ├── tailwind.config.js         # Tailwind CSS configuration
+│   ├── postcss.config.mjs         # PostCSS configuration
+│   ├── components.json            # shadcn/ui component configuration
+│   ├── tsconfig.json              # TypeScript configuration
+│   ├── package.json               # Node dependencies
+│   └── bun.lock                   # Bun package lock file
+├── .git/                          # Git repository
+├── .gitignore                     # Git ignore rules
+├── README.md                      # Project documentation
+└── SETUP.txt                      # Setup instructions
 ```
-
-## Responsible AI
-
-This system incorporates Responsible AI principles:
-
-- **Transparency** - Complete visibility into detection and prediction logic
-- **Explainability** - Clear reasoning for all alerts and predictions
-- **Source Attribution** - All information properly cited and verified
-- **Bias Mitigation** - Continuous monitoring for algorithmic fairness
-- **Privacy Protection** - Anonymized data processing
-- **Human Oversight** - Health officials make final decisions
-- **Audit Trails** - Complete logging of system decisions
-
-## License
-
-This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
-
-```
-Copyright 2025
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-```
-
-## Contributing
-
-Contributions are welcome! Please read our contributing guidelines and submit pull requests.
-
-## Contact
-
-For questions or support, please open an issue on GitHub.
