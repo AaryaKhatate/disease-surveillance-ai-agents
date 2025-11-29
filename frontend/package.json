@@ -10,7 +10,6 @@
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.1.7",
-    "@radix-ui/react-badge": "^1.1.7",
     "@radix-ui/react-checkbox": "^1.2.3",
     "@radix-ui/react-collapsible": "^1.1.8",
     "@radix-ui/react-dialog": "^1.1.11",
