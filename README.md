@@ -1,7 +1,5 @@
 # Disease Surveillance AI Agent System
 
-![Alt text](./data/public/architecture.png)
-
 ## Overview
 
 The Disease Surveillance AI Agent System is a revolutionary proactive disease outbreak detection platform that transforms healthcare from reactive to predictive. Built on Azure AI Agent Service and inspired by PandemicLLM's predictive capabilities, this multi-agent system continuously monitors multiple data streams to identify disease outbreak signals before they become widespread health crises.
@@ -16,6 +14,8 @@ Instead of waiting for doctors and hospitals to manually report cases, our AI ag
 - **Emergency Services** - ER activity and ambulance dispatch patterns
 
 ## System Architecture
+
+![Alt text](./data/public/architecture.png)
 
 This system uses a specialized multi-agent architecture powered by Azure AI:
 
