@@ -32,10 +32,10 @@ def main():
         if sys.argv[1] == "--test-connection":
             # Test database connection
             try:
-                import pyodbc
-                conn = pyodbc.connect(connection_string)
+                import psycopg2
+                conn = psycopg2.connect(connection_string)
                 cursor = conn.cursor()
-                cursor.execute("SELECT @@VERSION")
+                cursor.execute("SELECT version()")
                 version = cursor.fetchone()
                 logger.info(f"Database connection successful: {version[0]}")
                 cursor.close()
